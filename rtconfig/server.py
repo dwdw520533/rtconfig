@@ -1,86 +1,122 @@
 import json
 import asyncio
+import traceback
+import itertools
 from alita import Alita
+from rtconfig.manage import *
 from rtconfig.config import SERVER_INTERVAL
-from rtconfig.manage import ConfigManager, Message
+from alita import render_template
+from websockets import ConnectionClosed
+from rtconfig.exceptions import BaseConfigException, ConnectException
 
-app = Alita('rtconfig')
-connected = {}
-connected_message = {}
-config_store_state = {}
-
-
-def get_config_store(project_name):
-    if project_name not in config_store_state:
-        config_store_state[project_name] = ConfigManager(project_name)
-    return config_store_state[project_name]
-
-
-def register_connected_ws(message, ws):
-    if message.project_name not in connected:
-        connected.setdefault(message.project_name, set())
-    if ws not in connected[message.project_name]:
-        connected[message.project_name].add(ws)
-    connected_message[ws] = message
-
-
-def remove_connected_ws(project_name, ws):
-    try:
-        connected[project_name].remove(ws)
-        if ws in connected_message:
-            del connected_message[ws]
-    except KeyError:
-        pass
-
-
-@ConfigManager.notify
-async def notify_changed(config_store):
-    config_store_state[config_store.project_name] = config_store
-    clients = connected.get(config_store.project_name) or []
-    for client in clients:
-        message = connected_message.get(client)
-        if not (message and message.project_name == config_store.project_name):
-            continue
-        if config_store.hash_code != message.hash_code:
-            continue
-        await client.send(config_store.config_message())
+logger = logging.getLogger(__name__)
+app = Alita('rtconfig', static_folder='static')
 
 
 @app.websocket('/connect')
-async def index(request, ws):
+async def client_connect(request, ws):
     message = None
     while True:
         try:
-            while True:
-                message = Message(**json.loads(await ws.recv()))
-                print('===recv:', message)
-                register_connected_ws(message, ws)
-                conf = get_config_store(message.project_name)
-                if message.hash_code != conf.hash_code:
-                    await ws.send(conf.config_message())
-                else:
-                    await ws.send(message.to_string())
-                await asyncio.sleep(SERVER_INTERVAL)
-        except Exception as ex:
+            message = Message(request=request, **json.loads(await ws.recv()))
+            print('===recv:', message)
+            register_connected_ws(message, ws)
+            conf = get_config_store(message.config_name)
+            if message.hash_code != conf.hash_code:
+                await ws.send(conf.config_message(request))
+            else:
+                await ws.send(message.to_string())
+        except BaseConfigException as ex:
+            logger.exception(str(ex))
+            await ws.send(ex.get_message())
+        except (asyncio.CancelledError, ConnectionClosed) as ex:
+            remove_connected_ws(message.config_name, ws)
             raise ex
+        except Exception as ex:
+            logger.exception(traceback.format_exc())
+            await ws.send(ConnectException(exp_info=str(ex)).get_message())
         finally:
-            remove_connected_ws(message.project_name, ws)
+            await asyncio.sleep(SERVER_INTERVAL)
 
 
 @app.route('/change')
 async def change(request):
-    project_name = request.args['project_name']
-    conf = get_config_store(project_name)
+    config_name = request.args['config_name']
+    conf = get_config_store(config_name)
     await conf.update_config()
     return conf.source_data
 
 
 @app.route('/')
-async def connect_clients(request):
-    project_name = request.args['project_name']
-    clients = connected.get(project_name) or []
-    return [dict(id=id(c), **connected_message[c].to_dict()) for c in clients]
+async def page_config_list(request):
+    return await render_template(request, 'config_list.html')
+
+
+@app.route('/config_client')
+async def page_config_client(request):
+    config_name = request.args.get('config_name') or ''
+    ws_url = 'ws://127.0.0.1:8000/ws/config/client?config_name=' + config_name
+    return await render_template(request, 'config_client.html', ws_url=ws_url)
+
+
+@app.route('/config/list')
+async def config_list(request):
+    return {
+        'code': 0,
+        'data': [i.display_info() for i in config_store_state.values()]
+    }
+
+
+@app.route('/config', methods=['GET', 'POST'])
+async def config_detail(request):
+    config_name = request.args['config_name']
+    try:
+        config_store = config_store_state[config_name]
+    except KeyError:
+        return {'code': 1, "data": {}}
+    if request.method == "POST":
+        if not request.json:
+            return {'code': 1, "data": {}}
+        config_store.source_data = request.json
+        await config_store.update_config()
+    return {
+        'code': 0,
+        "data": config_store.display_info()
+    }
+
+
+@app.route('/config/client')
+async def config_clients(request):
+    config_name = request.args.get('config_name')
+    if config_name:
+        clients = connected.get(config_name) or []
+        return {
+            'code': 0,
+            "data": [connected_message[c].to_dict(indent=4) for c in clients]
+        }
+    else:
+        return {
+            'code': 0,
+            "data": list(itertools.chain(*[[
+                connected_message[c].to_dict(indent=4) for c in i]
+                for i in connected.values()]))
+        }
+
+
+@app.websocket('/ws/config/client')
+async def ws_config_clients(request, ws):
+    config_name = request.args.get('config_name')
+    while True:
+        if config_name:
+            clients = connected.get(config_name) or []
+            data = [connected_message[c].to_dict(indent=4) for c in clients]
+        else:
+            data = list(itertools.chain(*[[
+                    connected_message[c].to_dict(indent=4) for c in i]
+                    for i in connected.values()]))
+        await ws.send(json.dumps(data))
+        await asyncio.sleep(1)
 
 
 if __name__ == '__main__':
-    app.run(host='192.168.5.65')
+    app.run()

@@ -2,26 +2,32 @@ import os
 import io
 import json
 import logging
-from rtconfig.backend.base import BaseBackend
 from rtconfig.utils import OSUtils, object_merge
 
 
-class FileBackend(BaseBackend):
-    def __init__(self, directory, project_name, extension='.json', logger=None, merge=True):
+class BaseBackend:
+    def read(self):
+        raise NotImplementedError
+
+    def write(self, data):
+        raise NotImplementedError
+
+
+class JsonFileBackend(BaseBackend):
+    __charset__ = "utf-8"
+    _extension = '.json'
+
+    def __init__(self, directory, config_name, logger=None, merge=True):
         self.directory = directory
-        self.project_name = project_name
+        self.config_name = config_name
         self.os_util = OSUtils()
         self.merge_file = merge
         self.logger = logger or logging.getLogger(__name__)
 
         if not self.os_util.directory_exists(self.directory):
             raise Exception('Json file data store directory not exist: %s' % self.directory)
-        self.file_name = project_name + extension
+        self.file_name = config_name + self._extension
         self.file_path = os.path.join(self.directory, self.file_name)
-
-
-class JsonFileBackend(FileBackend):
-    __charset__ = "utf-8"
 
     def exists(self):
         return self.os_util.directory_exists(self.file_path)

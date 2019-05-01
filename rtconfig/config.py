@@ -1,3 +1,6 @@
-JSON_FILE_DIRECTORY = 'store'
+DEBUG = True
+
+STORE_DIRECTORY = 'store'
 
 SERVER_INTERVAL = 5
+

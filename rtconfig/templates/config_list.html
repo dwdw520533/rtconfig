@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block body %}
+    <div style="padding: 15px;">
+      <blockquote class="layui-elem-quote layui-text">
+        项目配置列表。
+      </blockquote>
+      <button class="layui-btn" id="create_config">创建配置</button>
+      <table class="layui-table" lay-data="{url:'/config/list', id:'config'}" lay-filter="config">
+  <thead>
+    <tr>
+      <th lay-data="{field:'config_name', sort: true}">配置名称</th>
+      <th lay-data="{field:'connect_num'}">连接数</th>
+      <th lay-data="{fixed: 'right', align:'center', toolbar: '#barDemo'}"></th>
+    </tr>
+  </thead>
+</table>
+
+<script type="text/html" id="barDemo">
+  <a class="layui-btn layui-btn-sm" lay-event="edit">编辑配置</a>
+  <a class="layui-btn layui-btn-sm" lay-event="detail">查看客户端连接</a>
+</script>
+    </div>
+  </div>
+
+  <div class="layui-footer"></div>
+</div>
+<script>
+layui.use('table', function(){
+  var table = layui.table;
+  var $ = layui.jquery;
+  $('#create_config').on('click', function(){
+      layer.prompt({
+          title: '创建配置',
+        }, function(value, index){
+          $.ajax({
+              type: "POST",
+              url: "/config?config_name=" + value,
+              contentType: "application/json",
+              data: value,
+              success:function(res){
+                layer.close(index);
+                var msg = res.code == 0 ? '创建配置成功' : res.msg;
+                layer.alert(msg);
+                location.reload();
+              }
+          });
+        });
+  });
+  //监听工具条
+  table.on('tool(config)', function(obj){
+    var data = obj.data;
+    if(obj.event === 'detail'){
+      window.location.href = "/config_client?config_name=" + data.config_name;
+    }else if(obj.event === 'edit'){
+        layer.prompt({
+          formType: 2,
+          value: data.source_data,
+          title: '配置信息',
+          area: ['600px', '800px'] //自定义文本域宽高
+        }, function(value, index){
+          $.ajax({
+              type: "PUT",
+              url: "/config?config_name=" + data.config_name,
+              contentType: "application/json",
+              data: value,
+              success:function(res){
+                layer.close(index);
+                var msg = res.code == 0 ? '保存成功' : res.msg;
+                layer.alert(msg);
+                location.reload();
+              }
+          });
+        });
+    } else if(obj.event === 'del'){
+      layer.confirm('真的删除行么', function(index){
+        obj.del();
+        layer.close(index);
+      });
+    }
+  });
+});
+</script>
+{% endblock %}

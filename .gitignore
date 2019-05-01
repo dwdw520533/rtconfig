@@ -53,8 +53,6 @@ nosetests.xml
 # Project related
 *migrations*
 media
-static
-templates
 venv
 debug/
 src/

@@ -30,6 +30,16 @@ class ProjectNoFoundException(BaseConfigException):
     description = "Project {config_name} config manager not exist."
 
 
+class ProjectExistException(BaseConfigException):
+    code = 403
+    description = "Project {config_name} config manager existed."
+
+
 class ConnectException(BaseConfigException):
     code = 404
     description = "Connection happened unknown exception: \n{exp_info}"
+
+
+class GlobalApiException(Exception):
+    def __init__(self, msg):
+        self.msg = msg

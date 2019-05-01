@@ -1,16 +1,21 @@
-import json
 import asyncio
 import traceback
 import itertools
 from alita import Alita
-from rtconfig.manage import *
+from rtconfig.manager import *
 from rtconfig.config import SERVER_INTERVAL
 from alita import render_template
 from websockets import ConnectionClosed
-from rtconfig.exceptions import BaseConfigException, ConnectException
+from rtconfig.exceptions import BaseConfigException, ConnectException, \
+    GlobalApiException, ProjectExistException
 
 logger = logging.getLogger(__name__)
 app = Alita('rtconfig', static_folder='static')
+
+
+@app.error_handler(GlobalApiException)
+def api_exception_handler(request, exc):
+    return {'code': 1, 'msg': exc.msg, 'data': {}}
 
 
 @app.websocket('/connect')
@@ -67,18 +72,24 @@ async def config_list(request):
     }
 
 
-@app.route('/config', methods=['GET', 'POST'])
+@app.route('/config', methods=['GET', 'POST', 'PUT'])
 async def config_detail(request):
     config_name = request.args['config_name']
-    try:
-        config_store = config_store_state[config_name]
-    except KeyError:
-        return {'code': 1, "data": {}}
     if request.method == "POST":
-        if not request.json:
-            return {'code': 1, "data": {}}
-        config_store.source_data = request.json
-        await config_store.update_config()
+        try:
+            config_store = await create_config_store(config_name)
+        except ProjectExistException:
+            raise GlobalApiException('配置名称已存在')
+    else:
+        try:
+            config_store = config_store_state[config_name]
+        except KeyError:
+            raise GlobalApiException('配置名称不存在')
+        if request.method == "PUT":
+            if not request.json:
+                raise GlobalApiException('配置数据不能为空')
+            config_store.source_data = request.json
+            await config_store.update_config()
     return {
         'code': 0,
         "data": config_store.display_info()

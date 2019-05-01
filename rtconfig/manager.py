@@ -1,11 +1,11 @@
 import os
 import json
-import attr
 import logging
-from rtconfig.utils import to_hash, strftime, convert_dt, OSUtils
+from rtconfig.message import Message
+from rtconfig.utils import to_hash, OSUtils
 from rtconfig.config import STORE_DIRECTORY
 from rtconfig.backend import BaseBackend, JsonFileBackend
-from rtconfig.exceptions import ProjectNoFoundException
+from rtconfig.exceptions import ProjectNoFoundException, ProjectExistException
 
 MT_NO_CHANGE = 'nochange'
 MT_CHANGED = 'changed'
@@ -16,39 +16,6 @@ extension_backend = {
     '.json': JsonFileBackend
 }
 logger = logging.getLogger(__name__)
-
-
-@attr.s
-class Message:
-    request = attr.ib()
-    message_type = attr.ib(validator=attr.validators.instance_of(str))
-    config_name = attr.ib(validator=attr.validators.instance_of(str))
-    hash_code = attr.ib(validator=attr.validators.instance_of(str))
-    data = attr.ib(default=dict(), validator=attr.validators.instance_of(dict))
-    context = attr.ib(default=dict(), validator=attr.validators.instance_of(dict))
-    lut = attr.ib(default=None, converter=convert_dt)
-
-    def to_dict(self, indent=0):
-        context = self.context
-        context.update(
-            headers=dict(self.request.headers)
-        )
-        return dict(
-            message_type=self.message_type,
-            config_name=self.config_name,
-            hash_code=self.hash_code,
-            data=self.data,
-            context=json.dumps(context, indent=indent) if indent else context,
-            lut=strftime(self.lut)
-        )
-
-    def to_string(self):
-        return json.dumps(dict(
-            message_type=self.message_type,
-            config_name=self.config_name,
-            hash_code=self.hash_code,
-            data=self.data,
-        ))
 
 
 class ConfigManager:
@@ -116,6 +83,14 @@ def get_config_store(config_name):
         return config_store_state[config_name]
     except KeyError:
         raise ProjectNoFoundException(config_name=config_name)
+
+
+async def create_config_store(config_name):
+    if config_name in config_store_state:
+        raise ProjectExistException(config_name=config_name)
+    config_store = ConfigManager(config_name)
+    await config_store.update_config()
+    return config_store
 
 
 def init_config_store():

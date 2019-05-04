@@ -18,7 +18,31 @@
 layui.use(['jquery', 'table'], function(){
   var $ = layui.$;
   var table = layui.table;
-  var ws = new WebSocket('{{ws_url}}');
+  var ws = null;
+
+  if (typeof WebSocket != 'undefined') {
+      ws = new WebSocket('{{ws_url}}');
+      ws.onmessage = function (event) {
+        fill_table(JSON.parse(event.data));
+      };
+      ws.onerror = function (event) {
+          console.log("connection closed!");
+          $('#state').text('连接发生错误');
+          //reload_page('连接发生错误');
+      };
+      ws.onclose = function (event) {
+          console.log("connection error!");
+          $('#state').text('连接已关闭');
+          //reload_page('连接已关闭');
+      };
+      ws.onopen = function (event) {
+          console.log("connection opened!");
+          $('#state').text('服务器已连接');
+      };
+  }
+  else {
+      $('#state').text('浏览器不支持Websocket');
+  }
 
   var fill_table = function (data) {
       table.render({
@@ -46,23 +70,6 @@ layui.use(['jquery', 'table'], function(){
   };
 
   fill_table([]);
-  ws.onmessage = function (event) {
-    fill_table(JSON.parse(event.data));
-  };
-  ws.onerror = function (event) {
-      console.log("connection closed!");
-      $('#state').text('连接发生错误');
-      reload_page('连接发生错误');
-  };
-  ws.onclose = function (event) {
-      console.log("connection error!");
-      $('#state').text('连接已关闭');
-      reload_page('连接已关闭');
-  };
-  ws.onopen = function (event) {
-      console.log("connection opened!");
-      $('#state').text('服务器已连接');
-  };
   //监听工具条
   table.on('tool(client)', function(obj){
     var data = obj.data;

@@ -10,7 +10,8 @@ from rtconfig.manager import Message
 
 
 class RtConfigClient:
-    def __init__(self, config_name, ws_url, logger=None, ping_interval=5, retry_interval=5, config_module=None):
+    def __init__(self, config_name, ws_url, logger=None, ping_interval=5,
+                 retry_interval=5, config_module=None):
         self._data = None
         self._thread = None
         self.config_name = config_name
@@ -69,13 +70,14 @@ class RtConfigClient:
             finally:
                 await asyncio.sleep(self.retry_interval)
 
-    def run(self):
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(self.loop())
+    def run_forever(self):
 
-    def start(self):
+        def loop_async():
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(self.loop())
+
         try:
-            self._thread = threading.Thread(target=self.run)
+            self._thread = threading.Thread(target=loop_async)
             self._thread.daemon = True
             self._thread.start()
         except (KeyboardInterrupt, SystemExit):

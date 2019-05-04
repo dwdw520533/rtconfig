@@ -28,12 +28,12 @@ layui.use(['jquery', 'table'], function(){
       ws.onerror = function (event) {
           console.log("connection closed!");
           $('#state').text('连接发生错误');
-          //reload_page('连接发生错误');
+          reload_page('连接发生错误');
       };
       ws.onclose = function (event) {
           console.log("connection error!");
           $('#state').text('连接已关闭');
-          //reload_page('连接已关闭');
+          reload_page('连接已关闭');
       };
       ws.onopen = function (event) {
           console.log("connection opened!");

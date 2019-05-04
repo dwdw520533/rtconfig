@@ -11,7 +11,7 @@ from rtconfig.manager import Message
 
 class RtConfigClient:
     def __init__(self, config_name, ws_url, logger=None, ping_interval=5,
-                 retry_interval=5, config_module=None):
+                 retry_interval=5, config_module=None, daemon=True):
         self._data = None
         self._thread = None
         self.config_name = config_name
@@ -22,6 +22,7 @@ class RtConfigClient:
         self.logger = logger or logging.getLogger(__name__)
         self.connect_url = os.path.join(self.ws_url, 'connect')
         self._config_module = None
+        self.daemon = daemon
 
         if config_module is not None:
             self.config_to_module(config_module)
@@ -72,13 +73,15 @@ class RtConfigClient:
 
     def run_forever(self):
 
-        def loop_async():
-            loop = asyncio.new_event_loop()
+        def loop_async(loop):
+            asyncio.set_event_loop(loop)
             loop.run_until_complete(self.loop())
 
         try:
-            self._thread = threading.Thread(target=loop_async)
-            self._thread.daemon = True
+            main_loop = asyncio.get_event_loop()
+            self._thread = threading.Thread(
+                target=loop_async, args=(main_loop, ))
+            self._thread.daemon = self.daemon
             self._thread.start()
         except (KeyboardInterrupt, SystemExit):
             self._thread.join()
@@ -88,3 +91,13 @@ class RtConfigClient:
         if isinstance(config_module, str):
             config_module = importlib.import_module(config_module)
         self._config_module = config_module
+
+
+if __name__ == '__main__':
+    import time
+    from rtconfig.config import SERVER_IP
+    client = RtConfigClient('demo', 'ws://' + SERVER_IP)
+    client.run_forever()
+    while True:
+        print('=====start')
+        time.sleep(1)

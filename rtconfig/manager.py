@@ -63,11 +63,11 @@ class ConfigManager:
 
     def config_message(self, request):
         return Message(
-            request,
             MT_CHANGED,
             self.config_name,
             self.hash_code,
-            self.source_data
+            self.source_data,
+            request=request
         ).to_string()
 
     def display_info(self):

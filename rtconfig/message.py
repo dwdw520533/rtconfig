@@ -5,12 +5,12 @@ from rtconfig.utils import convert_dt, strftime
 
 @attr.s
 class Message:
-    request = attr.ib()
     message_type = attr.ib(validator=attr.validators.instance_of(str))
     config_name = attr.ib(validator=attr.validators.instance_of(str))
     hash_code = attr.ib(validator=attr.validators.instance_of(str))
     data = attr.ib(default=dict(), validator=attr.validators.instance_of(dict))
     context = attr.ib(default=dict(), validator=attr.validators.instance_of(dict))
+    request = attr.ib(default=None)
     lut = attr.ib(default=None, converter=convert_dt)
 
     def to_dict(self, indent=0):

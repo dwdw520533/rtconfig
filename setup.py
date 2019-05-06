@@ -31,27 +31,9 @@ setup(
     platforms='any',
     python_requires='>=3.5',
     install_requires=[
-        'bson',
         'attrs',
-        'blinker',
-        'click',
-        'uvloop',
-        'multidict',
-        'itsdangerous',
-        'httptools',
-        'websockets',
-        'gunicorn',
-        'aiofiles',
-        'jinja2'
+        'websockets'
     ],
-    extras_require={
-        'dotenv': ['python-dotenv'],
-        'docs': [
-            'sphinx',
-            'pallets-sphinx-themes',
-            'sphinxcontrib-log-cabinet',
-        ]
-    },
     classifiers=[
         'Development Status :: 1 - Planning',
         'Environment :: Web Environment',
@@ -61,10 +43,5 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
-    ],
-    entry_points={
-        'console_scripts': [
-            'rtc = rtconfig.cli:main',
-        ],
-    },
+    ]
 )

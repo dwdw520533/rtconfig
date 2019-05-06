@@ -16,9 +16,6 @@
 **~
 **#
 
-# static dir
-static
-
 # Packages
 *.egg
 *.egg-info

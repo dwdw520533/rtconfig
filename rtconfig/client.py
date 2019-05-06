@@ -10,7 +10,7 @@ from rtconfig.manager import Message
 
 
 def config_logging(file_name=None):
-    log_formatter = logging.Formatter("%(asctime)s: %(message)s")
+    log_formatter = logging.Formatter("%(asctime)s[%(levelname)s]: %(message)s")
     root_logger = logging.getLogger()
 
     if file_name:

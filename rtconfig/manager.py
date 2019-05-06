@@ -53,8 +53,7 @@ class ConfigManager:
     async def update_config(self):
         self.store_backend.write(self.source_data)
         self.refresh()
-        for handler in self._notify_handler:
-            await handler(self)
+        config_store_state[self.config_name] = self
 
     @classmethod
     def notify(cls, func):
@@ -130,8 +129,6 @@ def remove_connected_ws(config_name, ws):
     except KeyError:
         pass
 
-
-@ConfigManager.notify
 async def notify_changed(config_store):
     config_store_state[config_store.config_name] = config_store
     clients = connected.get(config_store.config_name) or []

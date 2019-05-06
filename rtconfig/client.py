@@ -4,9 +4,23 @@ import asyncio
 import logging
 import websockets
 import threading
-import traceback
 import importlib
 from rtconfig.manager import Message
+
+
+def config_logging(file_name=None):
+    log_formatter = logging.Formatter("%(asctime)s: %(message)s")
+    root_logger = logging.getLogger()
+
+    if file_name:
+        file_handler = logging.FileHandler(file_name)
+        file_handler.setFormatter(log_formatter)
+        root_logger.addHandler(file_handler)
+
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(log_formatter)
+    root_logger.setLevel(logging.INFO)
+    root_logger.addHandler(console_handler)
 
 
 class RtConfigClient:
@@ -45,6 +59,7 @@ class RtConfigClient:
     @asyncio.coroutine
     def connect(self):
         ws = yield from websockets.connect(self.connect_url)
+        self.logger.info('Connect to rtconfig server success.')
         while True:
             send_msg = Message(
                 "no_change",
@@ -54,11 +69,15 @@ class RtConfigClient:
             )
             yield from ws.send(send_msg.to_string())
             received_msg = yield from ws.recv()
-            message = Message(**json.loads(received_msg))
+            json_data = json.loads(received_msg)
             try:
+                message = Message(**json_data)
                 getattr(self, message.message_type)(message)
             except AttributeError:
                 pass
+            except TypeError as ex:
+                raise Exception(json_data.get('error_msg', str(ex)))
+            finally:
                 yield from asyncio.sleep(self.ping_interval)
 
     @asyncio.coroutine
@@ -67,14 +86,14 @@ class RtConfigClient:
             try:
                 yield from self.connect()
             except (websockets.ConnectionClosed, ConnectionRefusedError):
-                self.logger.info('retry to connect server: %s.' % self.ws_url)
+                self.logger.info('Retry to connect server: %s.' % self.ws_url)
             except Exception as ex:
                 self.logger.error(str(ex))
-                self.logger.error(traceback.format_exc())
             finally:
                 yield from asyncio.sleep(self.retry_interval)
 
     def run_forever(self):
+        config_logging()
 
         def loop_async(loop):
             asyncio.set_event_loop(loop)
@@ -99,6 +118,7 @@ class RtConfigClient:
 if __name__ == '__main__':
     import time
     from rtconfig.config import WS_SERVER
+    config_logging()
     client = RtConfigClient('demo', WS_SERVER)
     client.run_forever()
     while True:

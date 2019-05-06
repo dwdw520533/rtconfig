@@ -90,6 +90,7 @@ async def create_config_store(config_name):
         raise ProjectExistException(config_name=config_name)
     config_store = ConfigManager(config_name)
     await config_store.update_config()
+    connected.setdefault(config_name, set())
     return config_store
 
 

@@ -25,8 +25,8 @@ def config_logging(file_name=None):
 
 
 class RtConfigClient:
-    def __init__(self, config_name, ws_url, logger=None, ping_interval=5,
-                 retry_interval=5, config_module=None, daemon=True):
+    def __init__(self, config_name, ws_url=None, logger=None, ping_interval=5,
+                 retry_interval=5, config_module=None, daemon=True, auto_start=True):
         self._data = None
         self._thread = None
         self.config_name = config_name
@@ -38,6 +38,9 @@ class RtConfigClient:
         self.connect_url = os.path.join(self.ws_url, 'connect')
         self._config_module = None
         self.daemon = daemon
+        self.auto_start = auto_start
+        if self.auto_start:
+            self.run_forever()
 
         if config_module is not None:
             self.config_to_module(config_module)
@@ -94,10 +97,11 @@ class RtConfigClient:
             try:
                 yield from self.connect()
             except (websockets.ConnectionClosed, ConnectionRefusedError):
-                self.logger.info('Retry to connect server: %s.' % self.ws_url)
+                pass
             except Exception as ex:
                 self.logger.error(str(ex))
             finally:
+                self.logger.info('Retry to connect server: %s.' % self.ws_url)
                 yield from asyncio.sleep(self.retry_interval)
 
     def run_forever(self):
@@ -110,6 +114,8 @@ class RtConfigClient:
         try:
             if self._thread:
                 raise RuntimeError('RtConfig client is running.')
+            if not self.ws_url:
+                raise RuntimeError('RtConfig client ws_url must be support.')
             main_loop = asyncio.get_event_loop()
             self._thread = threading.Thread(
                 target=loop_async, args=(main_loop, ))

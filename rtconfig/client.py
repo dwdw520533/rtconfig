@@ -1,5 +1,6 @@
 import os
 import json
+import types
 import asyncio
 import logging
 import websockets
@@ -45,6 +46,15 @@ class RtConfigClient:
     def data(self):
         return self._data
 
+    def change_module_config(self):
+        if not self._config_module:
+            return
+        for key, value in self._data.items():
+            if isinstance(self._config_module, types.ModuleType):
+                self._config_module.__dict__[key] = value
+            else:
+                self._config_module[key] = value
+
     def no_change(self, message):
         pass
 
@@ -52,9 +62,7 @@ class RtConfigClient:
         self.logger.info('Config changed: %s', message)
         self.hash_code = message.hash_code
         self._data = message.data
-        if self._config_module:
-            for key, value in self._data.items():
-                self._config_module[key] = value
+        self.change_module_config()
 
     @asyncio.coroutine
     def connect(self):

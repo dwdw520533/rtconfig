@@ -139,7 +139,7 @@ async def notify_changed(config_store):
         message = connected_message.get(client)
         if not (message and message.config_name == config_store.config_name):
             continue
-        if config_store.hash_code != message.hash_code:
+        if config_store.hash_code == message.hash_code:
             continue
         await client.send(config_store.config_message(message.request))
 

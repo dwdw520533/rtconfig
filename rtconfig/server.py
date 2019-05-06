@@ -3,7 +3,7 @@ import traceback
 import itertools
 from alita import Alita
 from rtconfig.manager import *
-from rtconfig.config import SERVER_INTERVAL, SERVER_IP
+from rtconfig.config import SERVER_INTERVAL, WS_SERVER
 from alita import render_template
 from websockets import ConnectionClosed
 from rtconfig.exceptions import BaseConfigException, ConnectException, \
@@ -59,7 +59,7 @@ async def page_config_list(request):
 @app.route('/config_client')
 async def page_config_client(request):
     config_name = request.args.get('config_name') or ''
-    ws_url = 'ws://%s/ws/config/client?config_name=%s' % (SERVER_IP, config_name)
+    ws_url = '%s/ws/config/client?config_name=%s' % (WS_SERVER, config_name)
     return await render_template(request, 'config_client.html', ws_url=ws_url)
 
 

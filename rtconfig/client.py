@@ -98,8 +98,8 @@ class RtConfigClient:
 
 if __name__ == '__main__':
     import time
-    from rtconfig.config import SERVER_IP
-    client = RtConfigClient('demo', 'ws://' + SERVER_IP)
+    from rtconfig.config import WS_SERVER
+    client = RtConfigClient('demo', WS_SERVER)
     client.run_forever()
     while True:
         print('=====start')

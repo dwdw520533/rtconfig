@@ -49,7 +49,7 @@ class RtConfigClient:
         pass
 
     def changed(self, message):
-        self.logger.info('Config changed: ', message)
+        self.logger.info('Config changed: %s', message)
         self.hash_code = message.hash_code
         self._data = message.data
         if self._config_module:

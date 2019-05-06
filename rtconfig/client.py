@@ -108,6 +108,8 @@ class RtConfigClient:
             loop.run_until_complete(self.loop())
 
         try:
+            if self._thread:
+                raise RuntimeError('RtConfig client is running.')
             main_loop = asyncio.get_event_loop()
             self._thread = threading.Thread(
                 target=loop_async, args=(main_loop, ))

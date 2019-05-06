@@ -24,7 +24,6 @@ async def client_connect(request, ws):
     while True:
         try:
             message = Message(request=request, **json.loads(await ws.recv()))
-            print('===recv:', message)
             register_connected_ws(message, ws)
             conf = get_config_store(message.config_name)
             if message.hash_code != conf.hash_code:

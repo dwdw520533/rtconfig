@@ -42,34 +42,37 @@ class RtConfigClient:
             for key, value in self._data.items():
                 self._config_module[key] = value
 
-    async def connect(self):
-        async with websockets.connect(self.connect_url) as ws:
-            while True:
-                send_msg = Message(
-                    "no_change",
-                    self.config_name,
-                    self.hash_code,
-                    context={'pid': os.getpid()}
-                )
-                await ws.send(send_msg.to_string())
-                message = Message(**json.loads(await ws.recv()))
-                try:
-                    getattr(self, message.message_type)(message)
-                except AttributeError:
-                    pass
-                await asyncio.sleep(self.ping_interval)
+    @asyncio.coroutine
+    def connect(self):
+        ws = yield from websockets.connect(self.connect_url)
+        while True:
+            send_msg = Message(
+                "no_change",
+                self.config_name,
+                self.hash_code,
+                context={'pid': os.getpid()}
+            )
+            yield from ws.send(send_msg.to_string())
+            received_msg = yield from ws.recv()
+            message = Message(**json.loads(received_msg))
+            try:
+                getattr(self, message.message_type)(message)
+            except AttributeError:
+                pass
+                yield from asyncio.sleep(self.ping_interval)
 
-    async def loop(self):
+    @asyncio.coroutine
+    def loop(self):
         while True:
             try:
-                await self.connect()
+                yield from self.connect()
             except (websockets.ConnectionClosed, ConnectionRefusedError):
                 self.logger.info('retry to connect server: %s.' % self.ws_url)
             except Exception as ex:
                 self.logger.error(str(ex))
                 self.logger.error(traceback.format_exc())
             finally:
-                await asyncio.sleep(self.retry_interval)
+                yield from asyncio.sleep(self.retry_interval)
 
     def run_forever(self):
 
